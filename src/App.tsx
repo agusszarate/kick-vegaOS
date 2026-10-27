@@ -14,13 +14,29 @@ import {
 import {
   BACK_HANDLER,
   decodeMessage,
+  isManifestUrl,
+  manifestScript,
   type View as PageView,
 } from '../shared/protocol';
+
+/** Downloads a master playlist for the page (see isManifestUrl). */
+async function fetchManifest(url: string): Promise<string | null> {
+  if (!isManifestUrl(url)) {
+    return null;
+  }
+  try {
+    const res = await fetch(url);
+    return res.ok ? await res.text() : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Native shell: a full-screen WebView that runs the UI in assets/ (built from
  * web/src). The shell only hides the splash screen, forwards the Back key to
- * the page and relays the page's logs to the device log.
+ * the page, downloads master playlists the page can't read, and relays the
+ * page's logs to the device log.
  */
 export const App = () => {
   const webRef = useRef<React.ElementRef<typeof WebView>>(null);
@@ -64,6 +80,10 @@ export const App = () => {
             pageView.current = msg.view;
           } else if (msg?.type === 'log') {
             console.warn(`[KickTV] ${msg.text}`);
+          } else if (msg?.type === 'manifest') {
+            fetchManifest(msg.url).then((text) =>
+              webRef.current?.injectJavaScript(manifestScript(msg.id, text)),
+            );
           }
         }}
         onLoad={() => hideSplashScreenCallback()}

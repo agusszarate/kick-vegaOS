@@ -1,14 +1,40 @@
 import Hls, {type ErrorData} from 'hls.js';
-import {log} from './bridge';
-import {HLS_CONFIG, RECYCLE_MS, levelCap} from './quality';
+import {fetchManifest, log} from './bridge';
+import {playlistBlobUrl} from './manifest';
+import {HLS_CONFIG, NATIVE_RECYCLE_MS, levelCap} from './quality';
 
 /** Ways to play a stream, tried in order until one works. */
 export type Mode = 'xhr' | 'fetch' | 'native';
 const MODES: Mode[] = ['xhr', 'fetch', 'native'];
 
+const STATS_MS = 30 * 1000;
+const MB = 1024 * 1024;
+
+/** One log line to tell a growing media buffer from a growing JS heap. */
+function playbackStats(video: HTMLVideoElement): string {
+  const b = video.buffered;
+  let buffered = 0;
+  for (let i = 0; i < b.length; i++) {
+    buffered += b.end(i) - b.start(i);
+  }
+  const heap = (performance as {memory?: {usedJSHeapSize: number}}).memory;
+  const q = video.getVideoPlaybackQuality?.();
+  return [
+    'stats',
+    `t=${video.currentTime.toFixed(0)}`,
+    `buffered=${buffered.toFixed(1)}s/${b.length}`,
+    `heap=${heap ? (heap.usedJSHeapSize / MB).toFixed(1) : '?'}MB`,
+    `frames=${q ? `${q.totalVideoFrames}/${q.droppedVideoFrames}` : '?'}`,
+  ].join(' ');
+}
+
 export class Player {
   private hls: Hls | null = null;
   private recycleTimer: ReturnType<typeof setTimeout> | undefined;
+  private statsTimer: ReturnType<typeof setInterval> | undefined;
+  private blobUrl: string | null = null;
+  // Bumped by stop() so a manifest that arrives late is ignored
+  private session = 0;
 
   /** @param onStatus shows a status line over the video ('' hides it) */
   constructor(
@@ -23,14 +49,17 @@ export class Player {
   play(url: string, mode: Mode = 'xhr'): void {
     this.stop();
     const video = this.video;
-    let retries = 0;
     this.onStatus('Cargando…');
     log(`start mode=${mode}`);
 
     video.onplaying = () => {
       this.onStatus('');
       log(`playing mode=${mode}`);
-      this.scheduleRecycle(url, mode);
+      if (mode === 'native') {
+        this.scheduleRecycle(url, mode);
+      }
+      clearInterval(this.statsTimer);
+      this.statsTimer = setInterval(() => log(playbackStats(video)), STATS_MS);
     };
 
     const fallback = (reason: string) => {
@@ -62,6 +91,25 @@ export class Player {
       return fallback('sin MSE');
     }
 
+    const session = this.session;
+    fetchManifest(url).then((text) => {
+      if (session !== this.session) {
+        return;
+      }
+      log(`manifest ${text ? 'via app' : 'direct'}`);
+      const src = text ? playlistBlobUrl(text, url) : url;
+      this.blobUrl = text ? src : null;
+      this.startHls(src, mode, fallback);
+    });
+  }
+
+  private startHls(
+    src: string,
+    mode: Mode,
+    fallback: (reason: string) => void,
+  ): void {
+    const video = this.video;
+    let retries = 0;
     // 'fetch' makes hls.js use fetch() instead of XMLHttpRequest, which some
     // WebView builds block for pages loaded from file://
     const hls = new Hls({...HLS_CONFIG, progressive: mode === 'fetch'});
@@ -95,12 +143,18 @@ export class Player {
       }
       fallback(why);
     });
-    hls.loadSource(url);
+    hls.loadSource(src);
     hls.attachMedia(video);
   }
 
   stop(): void {
+    this.session++;
     clearTimeout(this.recycleTimer);
+    clearInterval(this.statsTimer);
+    if (this.blobUrl) {
+      URL.revokeObjectURL(this.blobUrl);
+      this.blobUrl = null;
+    }
     if (this.hls) {
       this.hls.destroy();
       this.hls = null;
@@ -122,6 +176,6 @@ export class Player {
     this.recycleTimer = setTimeout(() => {
       log('recycle');
       this.play(url, mode);
-    }, RECYCLE_MS);
+    }, NATIVE_RECYCLE_MS);
   }
 }

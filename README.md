@@ -125,17 +125,28 @@ assets/            index.html, styles.css, icon, and the generated app.js
 manifest.toml      Vega package manifest
 ```
 
-The page loads from `file:///pkg/assets/index.html`. Kick's API and the Amazon
-IVS video CDN both allow cross-origin requests, so no backend is needed.
+The page loads from `file:///pkg/assets/index.html`. Kick's API, the Amazon IVS
+variant playlists and the video segments all allow cross-origin requests, so no
+backend is needed. The one exception is each stream's master playlist
+(`*.playback.live-video.net`), which only allows `https://kick.com`: the React
+Native shell, which isn't bound by CORS, downloads it on the page's behalf
+(only from `*.live-video.net`) and the page hands it to hls.js as a blob URL.
+See `shared/protocol.ts`.
 
 ### Memory
 
-Kick streams (Amazon IVS) carry ID3 and `EXT-X-DATERANGE` metadata every 1-2
-seconds. With hls.js defaults those become text-track cues that are never
-freed, and a 1 GB device runs out of memory in about 10 minutes; Vega OS then
-kills the app. KickTV disables all metadata and subtitle cues, keeps buffers
-small and, as a safeguard, restarts the player every 8 minutes of continuous
-playback (a 1-2 second gap). See `web/src/quality.ts`.
+Without that, hls.js can't load the stream and playback falls back to the
+WebView's native HLS player, which keeps everything it has played buffered
+(about 45 MB a minute at 720p). On a 1 GB device the system then kills the app
+after about 8 minutes. With hls.js the played video is evicted and memory stays
+flat. KickTV also caps video at 720p, disables metadata and subtitle cues
+(Kick sends ID3 and `EXT-X-DATERANGE` metadata every 1-2 seconds) and, if it
+ever has to use the native player, restarts it every 5 minutes. See
+`web/src/quality.ts`.
+
+To check memory on a device, play a stream and run
+`vega exec perf memory-monitor --app-name ar.agus.kicktv.main`; the device log
+also gets a `[KickTV] stats` line every 30 seconds with the buffered seconds.
 
 ## Development
 

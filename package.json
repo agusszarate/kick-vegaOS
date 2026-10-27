@@ -1,6 +1,6 @@
 {
   "name": "kicktv-vega",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Unofficial, lightweight Kick.com player for Fire TV devices running Vega OS",
   "license": "MIT",
   "private": true,

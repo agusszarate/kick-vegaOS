@@ -4,11 +4,12 @@ import type {HlsConfig, Level} from 'hls.js';
 export const MAX_HEIGHT = 720;
 
 /**
- * Restart the player after this much continuous playback. The WebView's media
- * pipeline still slowly retains memory on long live streams; recycling the
- * <video> element and MediaSource releases it (costs a ~1-2 s gap).
+ * The WebView's native HLS player (the last fallback) keeps everything it has
+ * played buffered, ~45 MB a minute at 720p, and the device kills the app after
+ * about 8 minutes. In that mode the player is restarted this often, which
+ * releases it (a ~1-2 s gap). hls.js evicts played video and needs no restart.
  */
-export const RECYCLE_MS = 8 * 60 * 1000;
+export const NATIVE_RECYCLE_MS = 5 * 60 * 1000;
 
 export const HLS_CONFIG: Partial<HlsConfig> = {
   capLevelToPlayerSize: true,
