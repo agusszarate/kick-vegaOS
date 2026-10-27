@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- KickTV app icon: a TV with a play button. Not Kick's logo. -->
+  <rect width="512" height="512" rx="112" fill="#53fc18"/>
+  <rect x="88" y="132" width="336" height="232" rx="36" fill="#0b0e0f"/>
+  <path d="M226 196 L318 248 L226 300 Z" fill="#53fc18"/>
+  <rect x="196" y="380" width="120" height="22" rx="11" fill="#0b0e0f"/>
+</svg>

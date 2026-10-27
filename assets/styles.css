@@ -1,0 +1,53 @@
+:root { --green: #53fc18; --bg: #0b0e0f; --card: #191b1f; --muted: #9aa0a6; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: #fff;
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overflow: hidden; }
+/* Todo se diseña a 1920x1080 y se escala al tamaño real (ver fitScreen).
+   Margen de ~5% porque muchas teles recortan los bordes (overscan). */
+#stage { position: fixed; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; overflow: hidden; }
+#home { padding: 54px 96px 0 96px; height: 100%; overflow: hidden; }
+#home .track { margin-right: -96px; }
+header { display: flex; align-items: center; gap: 24px; margin-bottom: 24px; }
+.logo { font-size: 56px; font-weight: 900; color: var(--green); letter-spacing: -1px; }
+.status { color: var(--muted); font-size: 22px; }
+.row { margin-bottom: 28px; }
+.row h2 { font-size: 28px; margin: 0 0 12px; font-weight: 600; }
+.row .empty { color: var(--muted); font-size: 22px; padding: 12px 0; }
+.track { display: flex; gap: 20px; transition: transform .2s ease-out; }
+.card { flex: 0 0 auto; width: 320px; background: var(--card); border-radius: 12px; overflow: hidden;
+  outline: 4px solid transparent; transition: outline-color .1s, transform .1s; }
+.card.action { width: 260px; height: 120px; display: flex; flex-direction: column; justify-content: center;
+  align-items: center; font-size: 26px; font-weight: 600; gap: 6px; }
+.card.action small { font-size: 18px; color: var(--muted); font-weight: 400; }
+.card.focus { outline-color: var(--green); transform: scale(1.05); }
+.thumb { width: 320px; height: 180px; background: #222 center/cover no-repeat; position: relative; }
+.thumb.avatar { background-size: 120px 120px; background-color: #15171a; }
+.badge { position: absolute; top: 10px; left: 10px; background: #e91916; font-size: 16px; font-weight: 700;
+  padding: 2px 8px; border-radius: 4px; }
+.badge.off { background: #3a3d42; }
+.viewers { position: absolute; bottom: 8px; left: 10px; font-size: 16px; background: rgba(0,0,0,.7);
+  padding: 2px 8px; border-radius: 4px; }
+.meta { padding: 10px 12px; }
+.name { font-size: 22px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.title { font-size: 17px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+
+#player { position: fixed; inset: 0; background: #000; display: none; }
+#player video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+#osd { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 96px 64px;
+  background: linear-gradient(transparent, rgba(0,0,0,.85)); transition: opacity .3s; }
+#osd .name { font-size: 40px; }
+#osd .title { font-size: 24px; color: #ddd; }
+#osd .hint { font-size: 20px; color: var(--muted); margin-top: 12px; }
+#msg { position: absolute; top: 50%; left: 0; right: 0; text-align: center; font-size: 30px; transform: translateY(-50%); }
+
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.92); display: none; align-items: center;
+  justify-content: center; flex-direction: column; gap: 24px; }
+.overlay h2 { font-size: 40px; margin: 0; }
+.overlay p { font-size: 24px; color: #ccc; margin: 0; max-width: 1100px; text-align: center; line-height: 1.4; }
+#searchInput { width: 900px; font-size: 36px; padding: 16px 24px; border-radius: 10px; border: 4px solid var(--green);
+  background: #111; color: #fff; outline: none; }
+#qr { background: #fff; padding: 16px; border-radius: 12px; }
+#qr img { display: block; width: 320px; height: 320px; image-rendering: pixelated; }
+code { color: var(--green); font-size: 22px; }
+#toast { position: fixed; top: 54px; right: 96px; background: var(--card); border-left: 6px solid var(--green);
+  padding: 16px 24px; font-size: 24px; border-radius: 8px; display: none; z-index: 10; }
