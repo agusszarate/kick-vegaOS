@@ -1,11 +1,10 @@
 import {
   byLiveThenViewers,
   fromChannel,
-  fromLivestream,
   getLiveStreams,
   slugFrom,
   type Channel,
-} from '../src/kick';
+} from '../src/lib/kick';
 
 describe('slugFrom', () => {
   it.each([
@@ -66,29 +65,6 @@ describe('fromChannel', () => {
       title: 'Desconectado',
     });
     expect(c.avatar).toBeUndefined();
-  });
-});
-
-describe('fromLivestream', () => {
-  it('maps an item of the live list (note: profilepic, not profile_pic)', () => {
-    expect(
-      fromLivestream({
-        session_title: 'Partido',
-        viewer_count: 47048,
-        thumbnail: {src: 'https://img/720.webp'},
-        channel: {
-          slug: 'lacobraaa',
-          playback_url: 'https://x.m3u8',
-          user: {username: 'LACOBRAAA', profilepic: 'https://img/a.png'},
-        },
-      }),
-    ).toMatchObject({
-      slug: 'lacobraaa',
-      name: 'LACOBRAAA',
-      avatar: 'https://img/a.png',
-      live: true,
-      viewers: 47048,
-    });
   });
 });
 

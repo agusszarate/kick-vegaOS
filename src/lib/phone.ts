@@ -15,11 +15,15 @@ export function topicUrl(topic: string): string {
   return `${NTFY_SERVER}/${topic}`;
 }
 
-export function qrImageTag(url: string): string {
+/** QR code modules for a URL: rows of dark (true) and light (false) squares. */
+export function qrMatrix(url: string): boolean[][] {
   const qr = qrcode(0, 'M');
   qr.addData(url);
   qr.make();
-  return qr.createImgTag(8, 0);
+  const n = qr.getModuleCount();
+  return Array.from({length: n}, (_r, row) =>
+    Array.from({length: n}, (_c, col) => qr.isDark(row, col)),
+  );
 }
 
 interface NtfyEvent {
@@ -49,27 +53,49 @@ export function slugFromNtfy(
   };
 }
 
-/** Calls onSlug for every channel sent to the topic. EventSource reconnects on its own. */
+const RECONNECT_MS = [2000, 5000, 15000, 60000];
+
+/**
+ * Calls onSlug for every channel sent to the topic, reconnecting when the
+ * connection drops. Returns a function that stops listening.
+ */
 export function listen(
   topic: string,
   onSlug: (slug: string) => void,
   onUnknown: (text: string) => void,
-): void {
-  let es: EventSource;
-  try {
-    es = new EventSource(`${topicUrl(topic)}/sse`);
-  } catch {
-    return;
-  }
-  es.onmessage = (ev) => {
-    const parsed = slugFromNtfy(String(ev.data));
-    if (!parsed) {
-      return;
-    }
-    if (parsed.slug) {
-      onSlug(parsed.slug);
-    } else {
-      onUnknown(parsed.text);
-    }
+): () => void {
+  let ws: WebSocket | null = null;
+  let timer = 0;
+  let failures = 0;
+  let stopped = false;
+
+  const connect = () => {
+    ws = new WebSocket(`${topicUrl(topic).replace(/^http/, 'ws')}/ws`);
+    ws.onopen = () => (failures = 0);
+    ws.onmessage = (ev) => {
+      const parsed = slugFromNtfy(String(ev.data));
+      if (!parsed) {
+        return;
+      }
+      if (parsed.slug) {
+        onSlug(parsed.slug);
+      } else {
+        onUnknown(parsed.text);
+      }
+    };
+    ws.onclose = () => {
+      if (!stopped) {
+        const wait =
+          RECONNECT_MS[Math.min(failures++, RECONNECT_MS.length - 1)];
+        timer = setTimeout(connect, wait);
+      }
+    };
+  };
+
+  connect();
+  return () => {
+    stopped = true;
+    clearTimeout(timer);
+    ws?.close();
   };
 }

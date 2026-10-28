@@ -13,10 +13,12 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      # npm ci also builds the video player (scripts/setup-shaka.sh)
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
-      # The .vpkg needs the Vega SDK, which isn't available here; this only
-      # checks that the WebView bundle builds.
-      - run: npm run build:web

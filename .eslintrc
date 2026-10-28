@@ -1,27 +1,33 @@
 {
   "root": true,
-  "plugins": ["@typescript-eslint"],
+  "env": {
+    "es2020": true
+  },
+  "plugins": [
+    "@typescript-eslint"
+  ],
   "extends": [
     "@react-native",
     "eslint:recommended"
   ],
   "overrides": [
     {
-      "files": ["**/*.ts", "**/*.tsx"],
+      "files": [
+        "**/*.ts",
+        "**/*.tsx"
+      ],
       "parser": "@typescript-eslint/parser",
       "parserOptions": {
-        "project": ["./tsconfig.json", "./web/tsconfig.json"]
+        "project": [
+          "./tsconfig.json"
+        ]
       }
     },
     {
-      "files": ["web/**/*.ts"],
-      "env": {"browser": true},
-      "rules": {
-        "react-native/no-inline-styles": "off"
-      }
-    },
-    {
-      "files": ["package.json", "kepler-compatibility.json"],
+      "files": [
+        "package.json",
+        "kepler-compatibility.json"
+      ],
       "parser": "jsonc-eslint-parser"
     }
   ],
@@ -29,9 +35,9 @@
     "babel.config.js",
     "metro.config.js",
     "jest.config.js",
-    "web/jest.config.js",
-    "web/build.mjs",
-    "assets/app.js",
-    "package-lock.json"
+    "package-lock.json",
+    "src/vendor/",
+    ".shaka-build/",
+    "scripts/"
   ]
 }
