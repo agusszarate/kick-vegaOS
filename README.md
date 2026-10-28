@@ -26,8 +26,9 @@ developer mode.
 
 ![Home screen on a Fire TV Stick 4K Select](docs/screenshot.png)
 
-The full kick.com site runs inside a WebView, but it is too heavy for a device
-with 1 GB of RAM. kick-vegaOS shows only what a TV needs and plays the stream itself.
+The full kick.com site is too heavy for a device with 1 GB of RAM. kick-vegaOS
+is a small React Native app that shows only what a TV needs and plays the
+streams with Vega's native video pipeline.
 
 ## Features
 
@@ -47,6 +48,7 @@ channel points are only earned through Kick's own player.
 - A Fire TV device with **Vega OS** in **developer mode**, on the same network as your computer.
 - An [Amazon Developer account](https://developer.amazon.com) (free).
 - The [Vega SDK](https://developer.amazon.com/docs/vega/0.24/install-vega-sdk.html) and Node.js 20+.
+- Git, Python 3 and Java 11+ to build the video player (see [How it works](#how-it-works)).
 
 ## Build and install
 
@@ -79,7 +81,9 @@ channel points are only earned through Kick's own player.
    vega run-app build/armv7-release/kick-vegaos_armv7.vpkg ar.agus.kickvegaos.main
    ```
 
-   Use the package that matches your device's architecture (`vega device info`).
+   The first `npm install` also builds the video player, which takes a couple
+   of minutes. Use the package that matches your device's architecture
+   (`vega device info`).
 
 > **Note:** the Vega build tools fail when the project path contains spaces
 > (for example macOS's `Application Support`). Clone it somewhere without them.
@@ -109,7 +113,7 @@ Kick link there and the TV opens it.
 - Topics have no password: anyone who knows yours could make your TV open a
   Kick channel. The app ignores everything else.
 - To keep messages inside your network, [self-host ntfy](https://docs.ntfy.sh/install/)
-  and change `NTFY_SERVER` in `web/src/phone.ts`.
+  and change `NTFY_SERVER` in `src/lib/phone.ts`.
 
 ### Home automation
 
@@ -127,55 +131,66 @@ adb shell vlcm launch-app orpheus://ar.agus.kickvegaos.main
 ## How it works
 
 ```
-src/App.tsx        React Native shell: a full-screen WebView, Back key, logs
-shared/protocol.ts Messages between the shell and the web UI
-web/src/           The UI (TypeScript), bundled by esbuild into assets/app.js
-  main.ts            screens, keys, wiring
-  kick.ts            Kick API client
-  player.ts          hls.js player with fallbacks and memory safeguards
-  quality.ts         hls.js settings (720p cap, metadata off)
-  home.ts focus.ts   rows of cards and remote-control focus
-  phone.ts           ntfy listener and QR code
-assets/            index.html, styles.css, icon, and the generated app.js
-manifest.toml      Vega package manifest
+src/App.tsx            screens, remote control, refresh, favorites, zapping
+src/screens/           home grid, player, search and phone overlays
+src/player/
+  StreamPlayer.ts        Vega W3C Media API + Shaka Player for one stream
+  quality.ts             Shaka settings (720p cap, small buffers)
+src/lib/
+  kick.ts                Kick API client
+  focus.ts rows.ts       grid focus, home rows, zapping
+  phone.ts               ntfy listener and QR code
+  storage.ts             favorites and the ntfy topic (AsyncStorage)
+scripts/setup-shaka.sh builds the video player into src/vendor/ (not committed)
+manifest.toml          Vega package manifest
 ```
 
-The page loads from `file:///pkg/assets/index.html`. Most of Kick's API, the
-Amazon IVS variant playlists and the video segments allow cross-origin
-requests, so no backend is needed. Two things only allow `https://kick.com`:
-each stream's master playlist (`*.playback.live-video.net`) and the list of
-live streams by language (`web.kick.com/api/v1/livestreams`). The React Native
-shell, which isn't bound by CORS, downloads exactly those two for the page; the
-page hands the master playlist to hls.js as a blob URL. See
-`shared/protocol.ts`.
+The app talks to Kick's web endpoints and Amazon IVS (the video CDN Kick uses)
+directly from React Native, so no backend is needed.
+
+### The video player
+
+Vega plays adaptive streams through its
+[W3C Media API](https://developer.amazon.com/docs/vega/0.24/media-player.html):
+a JavaScript player (here [Shaka Player](https://github.com/shaka-project/shaka-player))
+downloads and parses the HLS stream and feeds the device's hardware decoder.
+Shaka needs patches to run outside a browser. Amazon publishes them, with a few
+polyfills, in its [Vega Video Sample App](https://github.com/AmazonAppDev/vega-video-sample).
+
+Those files aren't part of this repository: on `npm install`,
+`scripts/setup-shaka.sh` downloads them from a pinned commit of Amazon's sample
+(checking its SHA-256), applies them to the official Shaka Player 4.8.5 and
+builds it into `src/vendor/`. Run `bash scripts/setup-shaka.sh --force` to
+rebuild.
 
 ### Memory
 
-Without that, hls.js can't load the stream and playback falls back to the
-WebView's native HLS player, which keeps everything it has played buffered
-(about 45 MB a minute at 720p). On a 1 GB device the system then kills the app
-after about 8 minutes. With hls.js the played video is evicted and memory stays
-flat. kick-vegaOS also caps video at 720p, disables metadata and subtitle cues
-(Kick sends ID3 and `EXT-X-DATERANGE` metadata every 1-2 seconds) and, if it
-ever has to use the native player, restarts it every 5 minutes. See
-`web/src/quality.ts`.
+Live streams play for hours on a device with 1 GB of RAM, so the player keeps
+little video around: about 12 seconds ahead and 4 behind, evicted as it plays,
+capped at 720p, with text tracks off (Kick sends ID3 and `EXT-X-DATERANGE`
+metadata every 1-2 seconds). Only one native player exists at a time; zapping
+destroys the current one before creating the next. See
+`src/player/quality.ts`.
 
 To check memory on a device, play a stream and run
-`vega exec perf memory-monitor --app-name ar.agus.kickvegaos.main`; the device log
-also gets a `[kick-vegaOS] stats` line every 30 seconds with the buffered seconds.
+`vega exec perf memory-monitor --app-name ar.agus.kickvegaos.main`.
 
 ## Development
 
 ```bash
-npm run watch:web   # rebuild assets/app.js on change
-npm run check       # typecheck + lint + tests
-npm run build:web   # bundle the UI only (no Vega SDK needed)
+npm run check   # typecheck + lint + tests
+npm run build   # release .vpkg for every architecture
 ```
 
-Device logs: `vega device start-log-stream`. The web UI's messages appear with
-the `[kick-vegaOS]` prefix.
+Device logs: `vega device start-log-stream`.
 
 ## License
 
 [MIT](LICENSE). Kick is a trademark of its owner. The icon is original and not
 Kick's logo.
+
+The video player is built at install time from
+[Shaka Player](https://github.com/shaka-project/shaka-player) (Apache 2.0) and
+Amazon's Vega patches and polyfills from the
+[Vega Video Sample App](https://github.com/AmazonAppDev/vega-video-sample),
+under their own licenses. None of them are included in this repository.

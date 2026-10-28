@@ -1,12 +1,10 @@
 /**
  * Minimal client for Kick's public web endpoints.
  *
- * These are the same (undocumented) endpoints kick.com uses. Most allow
- * cross-origin requests, so the WebView calls them directly; the live streams
- * by language only allow kick.com and go through the native shell.
+ * These are the same (undocumented) endpoints kick.com uses. The app calls
+ * them from React Native, which isn't bound by the CORS rules some of them
+ * set for browsers.
  */
-
-import {nativeFetch} from './bridge';
 
 const API = 'https://kick.com';
 const WEB_API = 'https://web.kick.com/api/v1';
@@ -35,17 +33,6 @@ export interface ApiChannel {
   } | null;
 }
 
-export interface ApiLivestream {
-  session_title?: string;
-  viewer_count?: number;
-  thumbnail?: {src?: string} | null;
-  channel: {
-    slug: string;
-    playback_url?: string;
-    user?: {username?: string; profilepic?: string | null};
-  };
-}
-
 // web.kick.com/api/v1/livestreams
 export interface ApiWebLivestream {
   title?: string;
@@ -65,19 +52,6 @@ export function fromChannel(c: ApiChannel): Channel {
     viewers: ls?.viewer_count || 0,
     thumb: ls?.thumbnail?.url || undefined,
     playback: c.playback_url,
-  };
-}
-
-export function fromLivestream(s: ApiLivestream): Channel {
-  return {
-    slug: s.channel.slug,
-    name: s.channel.user?.username || s.channel.slug,
-    avatar: s.channel.user?.profilepic || undefined,
-    live: true,
-    title: s.session_title || '',
-    viewers: s.viewer_count || 0,
-    thumb: s.thumbnail?.src || undefined,
-    playback: s.channel.playback_url,
   };
 }
 
@@ -134,27 +108,27 @@ export function tryGetChannel(slug: string): Promise<Channel | null> {
   return getChannel(slug).catch(() => null);
 }
 
+async function getText(url: string): Promise<string> {
+  const r = await fetch(url, {headers: {Accept: 'application/json'}});
+  if (!r.ok) {
+    throw new Error(`HTTP ${r.status} ${url}`);
+  }
+  return r.text();
+}
+
 /** Most watched live streams in a language (ISO 639-1 code). */
 export async function getLiveStreams(
   language = 'es',
   limit = 24,
-  fetchText = nativeFetch,
+  fetchText: (url: string) => Promise<string> = getText,
 ): Promise<Channel[]> {
   const text = await fetchText(
     `${WEB_API}/livestreams?limit=${limit}&sort=viewer_count_desc&language=${encodeURIComponent(
       language,
     )}`,
   );
-  if (text) {
-    const d = JSON.parse(text) as {data?: {livestreams?: ApiWebLivestream[]}};
-    return (d.data?.livestreams || []).map(fromWebLivestream);
-  }
-  // Outside the app (e.g. a desktop browser while developing). This endpoint
-  // no longer filters by language: it returns the top streams of every one.
-  const d = await getJSON<{data?: ApiLivestream[]}>(
-    `/stream/livestreams/${language}?page=1&limit=${limit}&sort=desc`,
-  );
-  return (d.data || []).map(fromLivestream);
+  const d = JSON.parse(text) as {data?: {livestreams?: ApiWebLivestream[]}};
+  return (d.data?.livestreams || []).map(fromWebLivestream);
 }
 
 export async function searchChannels(
