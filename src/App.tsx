@@ -14,14 +14,14 @@ import {
 import {
   BACK_HANDLER,
   decodeMessage,
-  isManifestUrl,
-  manifestScript,
+  fetchResultScript,
+  isNativeFetchUrl,
   type View as PageView,
 } from '../shared/protocol';
 
-/** Downloads a master playlist for the page (see isManifestUrl). */
-async function fetchManifest(url: string): Promise<string | null> {
-  if (!isManifestUrl(url)) {
+/** Downloads what the page can't read itself (see isNativeFetchUrl). */
+async function nativeFetch(url: string): Promise<string | null> {
+  if (!isNativeFetchUrl(url)) {
     return null;
   }
   try {
@@ -35,7 +35,7 @@ async function fetchManifest(url: string): Promise<string | null> {
 /**
  * Native shell: a full-screen WebView that runs the UI in assets/ (built from
  * web/src). The shell only hides the splash screen, forwards the Back key to
- * the page, downloads master playlists the page can't read, and relays the
+ * the page, downloads the few Kick URLs the page can't read, and relays the
  * page's logs to the device log.
  */
 export const App = () => {
@@ -79,10 +79,10 @@ export const App = () => {
           if (msg?.type === 'view') {
             pageView.current = msg.view;
           } else if (msg?.type === 'log') {
-            console.warn(`[KickTV] ${msg.text}`);
-          } else if (msg?.type === 'manifest') {
-            fetchManifest(msg.url).then((text) =>
-              webRef.current?.injectJavaScript(manifestScript(msg.id, text)),
+            console.warn(`[kick-vegaOS] ${msg.text}`);
+          } else if (msg?.type === 'fetch') {
+            nativeFetch(msg.url).then((text) =>
+              webRef.current?.injectJavaScript(fetchResultScript(msg.id, text)),
             );
           }
         }}

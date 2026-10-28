@@ -12,31 +12,36 @@ export type View = 'home' | 'player' | 'search' | 'phone';
 export type WebMessage =
   | {type: 'view'; view: View}
   | {type: 'log'; text: string}
-  | {type: 'manifest'; id: number; url: string};
+  | {type: 'fetch'; id: number; url: string};
 
 /** Global function the web UI exposes so the native shell can forward Back. */
 export const BACK_HANDLER = '__kickBack';
 
 /**
- * Global function the web UI exposes to receive a manifest the native shell
- * downloaded: (id, text) on success, (id, null) on failure.
+ * Global function the web UI exposes to receive what the native shell
+ * downloaded for it: (id, text) on success, (id, null) on failure.
  */
-export const MANIFEST_HANDLER = '__kickManifest';
+export const FETCH_HANDLER = '__kickFetch';
 
 /**
- * Kick's master playlists (playback.live-video.net) only allow the
- * https://kick.com origin, so a page loaded from file:// can't read them,
- * while the variant playlists and segments allow any origin. The native shell,
- * which isn't bound by CORS, downloads just the master playlist, and only
- * from Amazon IVS.
+ * A few Kick endpoints only allow the https://kick.com origin, so a page
+ * loaded from file:// can't read them. The native shell, which isn't bound by
+ * CORS, downloads them for the page, and only these:
+ * - master playlists (*.live-video.net); the variant playlists and segments
+ *   allow any origin, so hls.js loads those itself
+ * - the list of live streams by language (web.kick.com), the only endpoint
+ *   that still filters by language
  */
-export function isManifestUrl(url: string): boolean {
-  return /^https:\/\/[a-z0-9.-]+\.live-video\.net\/[^\s]*$/i.test(url);
+export function isNativeFetchUrl(url: string): boolean {
+  return (
+    /^https:\/\/[a-z0-9.-]+\.live-video\.net\/[^\s]*$/i.test(url) ||
+    /^https:\/\/web\.kick\.com\/api\/v1\/livestreams\?[^\s#]*$/.test(url)
+  );
 }
 
-/** Script the native shell injects to hand a manifest back to the page. */
-export function manifestScript(id: number, text: string | null): string {
-  return `window.${MANIFEST_HANDLER} && window.${MANIFEST_HANDLER}(${id}, ${JSON.stringify(
+/** Script the native shell injects to hand a download back to the page. */
+export function fetchResultScript(id: number, text: string | null): string {
+  return `window.${FETCH_HANDLER} && window.${FETCH_HANDLER}(${id}, ${JSON.stringify(
     text,
   )}); true;`;
 }
@@ -52,7 +57,7 @@ export function decodeMessage(data: string): WebMessage | null {
       return msg as WebMessage;
     }
     if (
-      msg?.type === 'manifest' &&
+      msg?.type === 'fetch' &&
       typeof msg.id === 'number' &&
       typeof msg.url === 'string'
     ) {

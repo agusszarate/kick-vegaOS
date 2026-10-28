@@ -1,5 +1,5 @@
-const FAVS_KEY = 'kicktv.favs';
-const TOPIC_KEY = 'kicktv.topic';
+const FAVS_KEY = 'kick-vegaos.favs';
+const TOPIC_KEY = 'kick-vegaos.topic';
 
 function read<T>(key: string, fallback: T): T {
   try {
@@ -56,7 +56,7 @@ export function phoneTopic(): string {
   if (!topic) {
     const bytes = crypto.getRandomValues(new Uint8Array(10));
     topic =
-      'kicktv-' +
+      'kick-vegaos-' +
       Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
     write(TOPIC_KEY, topic);
   }

@@ -2,6 +2,7 @@ import {
   byLiveThenViewers,
   fromChannel,
   fromLivestream,
+  getLiveStreams,
   slugFrom,
   type Channel,
 } from '../src/kick';
@@ -108,5 +109,40 @@ describe('byLiveThenViewers', () => {
       ch('d', false, 0),
     ].sort(byLiveThenViewers);
     expect(sorted.map((c) => c.slug)).toEqual(['c', 'b', 'a', 'd']);
+  });
+});
+
+describe('getLiveStreams', () => {
+  it('reads the language-filtered list the app downloads', async () => {
+    const urls: string[] = [];
+    const list = await getLiveStreams('es', 2, async (url) => {
+      urls.push(url);
+      return JSON.stringify({
+        data: {
+          livestreams: [
+            {
+              title: 'Hola',
+              viewer_count: 7902,
+              thumbnail: {src: 'https://images.kick.com/t.webp'},
+              channel: {slug: 'naim', username: 'Naim', profile_pic: null},
+            },
+          ],
+        },
+      });
+    });
+    expect(urls).toEqual([
+      'https://web.kick.com/api/v1/livestreams?limit=2&sort=viewer_count_desc&language=es',
+    ]);
+    expect(list).toEqual([
+      {
+        slug: 'naim',
+        name: 'Naim',
+        avatar: undefined,
+        live: true,
+        title: 'Hola',
+        viewers: 7902,
+        thumb: 'https://images.kick.com/t.webp',
+      },
+    ]);
   });
 });

@@ -1,5 +1,5 @@
 import Hls, {type ErrorData} from 'hls.js';
-import {fetchManifest, log} from './bridge';
+import {log, nativeFetch} from './bridge';
 import {playlistBlobUrl} from './manifest';
 import {HLS_CONFIG, NATIVE_RECYCLE_MS, levelCap} from './quality';
 
@@ -92,7 +92,7 @@ export class Player {
     }
 
     const session = this.session;
-    fetchManifest(url).then((text) => {
+    nativeFetch(url).then((text) => {
       if (session !== this.session) {
         return;
       }

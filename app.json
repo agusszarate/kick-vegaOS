@@ -1,5 +1,5 @@
 {
   "//": "The declared app name must follow this pattern to be KRL-compatible",
-  "name": "ar.agus.kicktv.main",
-  "displayName": "KickTV"
+  "name": "ar.agus.kickvegaos.main",
+  "displayName": "kick-vegaOS"
 }

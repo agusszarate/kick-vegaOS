@@ -1,8 +1,16 @@
 {
-  "name": "kicktv-vega",
+  "name": "kick-vegaos",
   "version": "0.3.0",
   "description": "Unofficial, lightweight Kick.com player for Fire TV devices running Vega OS",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agusszarate/kick-vegaOS.git"
+  },
+  "homepage": "https://github.com/agusszarate/kick-vegaOS#readme",
+  "bugs": {
+    "url": "https://github.com/agusszarate/kick-vegaOS/issues"
+  },
   "private": true,
   "keywords": [
     "kick",
@@ -63,7 +71,7 @@
   },
   "kepler": {
     "projectType": "application",
-    "appName": "KickTV",
+    "appName": "kick-vegaOS",
     "targets": [
       "tv"
     ]

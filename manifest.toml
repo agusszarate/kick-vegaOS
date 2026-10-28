@@ -1,9 +1,9 @@
 schema-version = 1
 
 [package]
-title = "KickTV"
+title = "kick-vegaOS"
 version = "0.3.0"
-id = "ar.agus.kicktv"
+id = "ar.agus.kickvegaos"
 # 512x512 PNG in assets/image (source: design/icon.svg)
 icon = "@image/icon.png"
 
@@ -23,7 +23,7 @@ id = "/com.amazon.kepler.webview_4@IWebview_4"
 
 [components]
 [[components.interactive]]
-id = "ar.agus.kicktv.main"
+id = "ar.agus.kickvegaos.main"
 runtime-module = "/com.amazon.kepler.runtime.react_native_kepler_4@IReactNativeKepler_0"
 launch-type = "singleton"
 categories = ["com.amazon.category.main"]

@@ -1,42 +1,55 @@
 import {
   decodeMessage,
-  isManifestUrl,
-  manifestScript,
+  fetchResultScript,
+  isNativeFetchUrl,
 } from '../../shared/protocol';
 import {absolutizePlaylist} from '../src/manifest';
 
-describe('isManifestUrl', () => {
-  it('accepts Amazon IVS playlists only', () => {
+describe('isNativeFetchUrl', () => {
+  it('accepts Amazon IVS playlists and the live streams list only', () => {
     expect(
-      isManifestUrl(
+      isNativeFetchUrl(
         'https://fa7.us-west-2.playback.live-video.net/api/video/v1/x.m3u8?token=a',
       ),
     ).toBe(true);
-    expect(isManifestUrl('http://a.playback.live-video.net/x.m3u8')).toBe(
+    expect(isNativeFetchUrl('http://a.playback.live-video.net/x.m3u8')).toBe(
       false,
     );
-    expect(isManifestUrl('https://live-video.net.evil.com/x.m3u8')).toBe(false);
-    expect(isManifestUrl('https://evil.com/?live-video.net/')).toBe(false);
-    expect(isManifestUrl('file:///etc/passwd')).toBe(false);
+    expect(isNativeFetchUrl('https://live-video.net.evil.com/x.m3u8')).toBe(
+      false,
+    );
+    expect(isNativeFetchUrl('https://evil.com/?live-video.net/')).toBe(false);
+    expect(isNativeFetchUrl('file:///etc/passwd')).toBe(false);
+    expect(
+      isNativeFetchUrl(
+        'https://web.kick.com/api/v1/livestreams?limit=24&language=es',
+      ),
+    ).toBe(true);
+    expect(isNativeFetchUrl('https://web.kick.com/api/v1/users/me')).toBe(
+      false,
+    );
+    expect(isNativeFetchUrl('https://kick.com/api/v2/channels/x')).toBe(false);
   });
 });
 
-describe('manifest messages', () => {
+describe('fetch messages', () => {
   it('decodes manifest requests and rejects malformed ones', () => {
+    expect(decodeMessage('{"type":"fetch","id":3,"url":"https://x"}')).toEqual({
+      type: 'fetch',
+      id: 3,
+      url: 'https://x',
+    });
     expect(
-      decodeMessage('{"type":"manifest","id":3,"url":"https://x"}'),
-    ).toEqual({type: 'manifest', id: 3, url: 'https://x'});
-    expect(
-      decodeMessage('{"type":"manifest","id":"3","url":"https://x"}'),
+      decodeMessage('{"type":"fetch","id":"3","url":"https://x"}'),
     ).toBeNull();
   });
 
   it('builds an injectable script that escapes the playlist', () => {
-    const script = manifestScript(7, '#EXTM3U\n"quoted"</script>');
+    const script = fetchResultScript(7, '#EXTM3U\n"quoted"</script>');
     expect(script).toContain(
-      'window.__kickManifest(7, "#EXTM3U\\n\\"quoted\\"</script>")',
+      'window.__kickFetch(7, "#EXTM3U\\n\\"quoted\\"</script>")',
     );
-    expect(manifestScript(8, null)).toContain('(8, null)');
+    expect(fetchResultScript(8, null)).toContain('(8, null)');
   });
 });
 
