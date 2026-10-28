@@ -24,6 +24,8 @@ developer mode.
 > If you represent Kick and want something changed or removed, please
 > [open an issue](https://github.com/agusszarate/kick-vegaOS/issues).
 
+![Home screen on a Fire TV Stick 4K Select](docs/screenshot.png)
+
 The full kick.com site runs inside a WebView, but it is too heavy for a device
 with 1 GB of RAM. kick-vegaOS shows only what a TV needs and plays the stream itself.
 
